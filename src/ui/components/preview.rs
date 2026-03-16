@@ -183,6 +183,18 @@ impl PreviewComponent {
                         map
                     },
                 },
+                SegmentId::Balance => SegmentData {
+                    primary: "$279/$750".to_string(),
+                    secondary: "".to_string(),
+                    metadata: {
+                        let mut map = HashMap::new();
+                        map.insert("remaining".to_string(), "471.00".to_string());
+                        map.insert("used".to_string(), "279.00".to_string());
+                        map.insert("total".to_string(), "750.00".to_string());
+                        map.insert("plan_name".to_string(), "vip+GPT_Month".to_string());
+                        map
+                    },
+                },
             };
 
             segments_data.push((segment_config.clone(), mock_data));

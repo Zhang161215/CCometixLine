@@ -258,3 +258,53 @@ pub fn usage_segment() -> SegmentConfig {
         },
     }
 }
+
+pub fn balance_segment() -> SegmentConfig {
+    SegmentConfig {
+        id: SegmentId::Balance,
+        enabled: false,
+        icon: IconConfig {
+            plain: "💳".to_string(),
+            nerd_font: "\u{f058}".to_string(),
+        },
+        colors: ColorConfig {
+            icon: Some(AnsiColor::Rgb {
+                r: 46,
+                g: 52,
+                b: 64,
+            }),
+            text: Some(AnsiColor::Rgb {
+                r: 46,
+                g: 52,
+                b: 64,
+            }),
+            background: Some(AnsiColor::Rgb {
+                r: 163,
+                g: 190,
+                b: 140,
+            }), // Nord green background
+        },
+        styles: TextStyleConfig { text_bold: true },
+        options: {
+            let mut opts = HashMap::new();
+            opts.insert(
+                "api_base_url".to_string(),
+                serde_json::Value::String("https://synai996.space".to_string()),
+            );
+            opts.insert(
+                "access_token".to_string(),
+                serde_json::Value::String("".to_string()),
+            );
+            opts.insert(
+                "user_id".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
+            opts.insert(
+                "cache_duration".to_string(),
+                serde_json::Value::Number(300.into()),
+            );
+            opts.insert("timeout".to_string(), serde_json::Value::Number(3.into()));
+            opts
+        },
+    }
+}
