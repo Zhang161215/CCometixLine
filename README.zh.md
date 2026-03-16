@@ -230,7 +230,59 @@ CCometixLine 支持通过 TOML 文件和交互式 TUI 进行完整配置：
 - 颜色自定义
 - 格式选项
 
-支持的段落：目录、Git、模型、使用量、时间、成本、输出样式
+支持的段落：目录、Git、模型、使用量、时间、成本、输出样式、余额
+
+### 余额段落（订阅额度）
+
+在状态栏中显示 API 订阅的已用额度、剩余余额和到期时间。
+
+**预览效果：**
+```
+🟡 50% · 💸 已用: $359.41 · 💰 剩余: $391 · 📅 到期: 04-06 · Synai996 AI ✨
+```
+
+**配置方式** — 编辑 `~/.claude/ccline/config.toml`：
+
+```toml
+[[segments]]
+id = "balance"
+enabled = true
+
+[segments.icon]
+plain = ""
+nerd_font = ""
+
+[segments.colors.text]
+r = 255
+g = 209
+b = 102
+
+[segments.styles]
+text_bold = true
+
+[segments.options]
+api_base_url = "https://synai996.space"          # API 地址
+access_token = "your-access-token-here"          # 系统访问令牌
+user_id = "1"                                    # 用户 ID
+cache_duration = 300                             # 缓存时间（秒），默认 300 = 5分钟
+timeout = 3                                      # API 请求超时（秒）
+```
+
+**获取访问令牌：**
+
+1. 访问 [https://synai996.space/console/personal](https://synai996.space/console/personal)
+2. 进入 **安全设置** → **系统访问令牌**
+3. 点击 **生成令牌**，复制生成的令牌
+4. 将令牌粘贴到 `config.toml` 中的 `access_token` 字段
+
+**状态指示灯** — 根据剩余额度百分比显示不同颜色：
+
+| 剩余比例 | 指示灯 |
+|---------|--------|
+| > 60%   | 🟢 绿色 |
+| > 40%   | 🟡 黄色 |
+| > 20%   | 🟠 橙色 |
+| ≤ 20%   | 🔴 红色 |
 
 ### 模型配置 (`models.toml`)
 

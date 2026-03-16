@@ -238,7 +238,59 @@ All segments are configurable with:
 - Color customization
 - Format options
 
-Supported segments: Directory, Git, Model, Usage, Time, Cost, OutputStyle
+Supported segments: Directory, Git, Model, Usage, Time, Cost, OutputStyle, Balance
+
+### Balance Segment (Subscription Quota)
+
+Display your API subscription usage, remaining balance, and expiry date in the statusline.
+
+**Preview:**
+```
+🟡 50% · 💸 已用: $359.41 · 💰 剩余: $391 · 📅 到期: 04-06 · Synai996 AI ✨
+```
+
+**Configuration** in `~/.claude/ccline/config.toml`:
+
+```toml
+[[segments]]
+id = "balance"
+enabled = true
+
+[segments.icon]
+plain = ""
+nerd_font = ""
+
+[segments.colors.text]
+r = 255
+g = 209
+b = 102
+
+[segments.styles]
+text_bold = true
+
+[segments.options]
+api_base_url = "https://synai996.space"          # API base URL
+access_token = "your-access-token-here"          # System access token
+user_id = "1"                                    # Your user ID
+cache_duration = 300                             # Cache TTL in seconds (default: 300 = 5min)
+timeout = 3                                      # API request timeout in seconds
+```
+
+**How to get your access token:**
+
+1. Visit [https://synai996.space/console/personal](https://synai996.space/console/personal)
+2. Navigate to **Security Settings** → **System Access Token**
+3. Click **Generate Token** and copy the token
+4. Paste it into the `access_token` field in `config.toml`
+
+**Status indicators** — the colored dot changes based on remaining balance percentage:
+
+| Remaining | Indicator |
+|-----------|-----------|
+| > 60%     | 🟢 Green  |
+| > 40%     | 🟡 Yellow |
+| > 20%     | 🟠 Orange |
+| ≤ 20%     | 🔴 Red    |
 
 ### Model Configuration (`models.toml`)
 
