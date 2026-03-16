@@ -1,6 +1,6 @@
 use super::{Segment, SegmentData};
 use crate::config::{InputData, SegmentId};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,6 +28,7 @@ struct SubscriptionInfo {
     amount_total: u64,
     amount_used: u64,
     upgrade_group: String,
+    end_time: i64,
 }
 
 // Cache structure
@@ -37,6 +38,7 @@ struct BalanceCache {
     used: f64,
     total: f64,
     plan_name: String,
+    expire_date: String,
     cached_at: String,
 }
 
@@ -110,7 +112,7 @@ impl BalanceSegment {
         access_token: &str,
         user_id: &str,
         timeout_secs: u64,
-    ) -> Option<(f64, f64, f64, String)> {
+    ) -> Option<(f64, f64, f64, String, String)> {
         let url = format!("{}/api/subscription/self", api_base_url.trim_end_matches('/'));
 
         let agent = if let Some(proxy_url) = Self::get_proxy_from_settings() {
@@ -153,6 +155,7 @@ impl BalanceSegment {
         let mut total_amount: u64 = 0;
         let mut total_used: u64 = 0;
         let mut names: Vec<String> = Vec::new();
+        let mut latest_end_time: i64 = 0;
 
         for sub in subs {
             let s = &sub.subscription;
@@ -161,6 +164,9 @@ impl BalanceSegment {
             if !names.contains(&s.upgrade_group) {
                 names.push(s.upgrade_group.clone());
             }
+            if s.end_time > latest_end_time {
+                latest_end_time = s.end_time;
+            }
         }
 
         let remaining = (total_amount - total_used) as f64 / 500000.0;
@@ -168,7 +174,17 @@ impl BalanceSegment {
         let total = total_amount as f64 / 500000.0;
         let plan_name = names.join("+");
 
-        Some((remaining, used, total, plan_name))
+        // Format expire date as MM-DD
+        let expire_date = if latest_end_time > 0 {
+            let dt = chrono::DateTime::from_timestamp(latest_end_time, 0)
+                .unwrap_or_default()
+                .with_timezone(&chrono::Local);
+            dt.format("%m-%d").to_string()
+        } else {
+            "?".to_string()
+        };
+
+        Some((remaining, used, total, plan_name, expire_date))
     }
 
 }
@@ -218,26 +234,27 @@ impl Segment for BalanceSegment {
             .map(|cache| self.is_cache_valid(cache, cache_duration))
             .unwrap_or(false);
 
-        let (remaining, used, total, plan_name) = if use_cached {
+        let (remaining, used, total, plan_name, expire_date) = if use_cached {
             let cache = cached_data.unwrap();
-            (cache.remaining, cache.used, cache.total, cache.plan_name)
+            (cache.remaining, cache.used, cache.total, cache.plan_name, cache.expire_date)
         } else {
             match self.fetch_balance(api_base_url, access_token, user_id, timeout) {
-                Some((remaining, used, total, plan_name)) => {
+                Some((remaining, used, total, plan_name, expire_date)) => {
                     let cache = BalanceCache {
                         remaining,
                         used,
                         total,
                         plan_name: plan_name.clone(),
+                        expire_date: expire_date.clone(),
                         cached_at: Utc::now().to_rfc3339(),
                     };
                     self.save_cache(&cache);
-                    (remaining, used, total, plan_name)
+                    (remaining, used, total, plan_name, expire_date)
                 }
                 None => {
                     // Fallback to stale cache if API fails
                     if let Some(cache) = cached_data {
-                        (cache.remaining, cache.used, cache.total, cache.plan_name)
+                        (cache.remaining, cache.used, cache.total, cache.plan_name, cache.expire_date)
                     } else {
                         return None;
                     }
@@ -251,9 +268,38 @@ impl Segment for BalanceSegment {
             0.0
         };
 
-        // Format: Today: $xxx.xx · Total: $xxx · Synai996 AI
-        let primary = format!("Today: ${:.2} · Total: ${:.0}", used, total);
-        let secondary = "· Synai996 AI".to_string();
+        // Color circle based on remaining percentage
+        let status_dot = if remaining_pct > 60.0 {
+            "🟢"
+        } else if remaining_pct > 40.0 {
+            "🟡"
+        } else if remaining_pct > 20.0 {
+            "🟠"
+        } else {
+            "🔴"
+        };
+
+        // Format: 🟡 51% · 💸 已用: $359.41 · 💰 剩余: $391 · 📅 到期: 04-06 · Synai996 AI
+        let pct_display = remaining_pct.round() as u32;
+        let primary = format!(
+            "{} {}% · 💸 已用: ${:.2} · 💰 剩余: ${:.0} · 📅 到期: {}",
+            status_dot, pct_display, used, remaining, expire_date
+        );
+        // Rotating cute emoji based on current minute + second
+        let cute_emojis = [
+            "✨", "🌸", "🎀", "🌟", "💫", "🦋", "🌈", "🍀",
+            "💖", "🎐", "🌙", "⭐", "🎵", "🍬", "🧸", "🎪",
+            "🌺", "🎠", "💝", "🪄", "🫧", "🎯", "🔮", "🌷",
+            "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾",
+            "👻", "💀", "☠️", "👾", "🤖", "🎃", "🤠", "😑",
+            "🤬", "😤", "😍", "🤣", "😳",
+            "🌈", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "🌨️",
+            "🔞", "‼️", "⁉️",
+        ];
+        let idx = chrono::Local::now().second() as usize % cute_emojis.len();
+        let cute = cute_emojis[idx];
+
+        let secondary = format!("· Synai996 AI {}", cute);
 
         let mut metadata = HashMap::new();
         metadata.insert("remaining".to_string(), format!("{:.2}", remaining));
